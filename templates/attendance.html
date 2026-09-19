@@ -13,6 +13,11 @@
         margin-bottom: 25px;
     }
 
+
+    /* ==============================
+       ATTENDANCE GRID
+    ============================== */
+
     .attendance-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -42,6 +47,11 @@
         line-height: 1.6;
     }
 
+
+    /* ==============================
+       FACE BUTTON
+    ============================== */
+
     .face-button {
         display: inline-block;
         margin-top: 15px;
@@ -57,6 +67,11 @@
     .face-button:hover {
         background: #5568d8;
     }
+
+
+    /* ==============================
+       MANUAL ATTENDANCE
+    ============================== */
 
     .form-group {
         margin-top: 20px;
@@ -97,6 +112,11 @@
         background: #157347;
     }
 
+
+    /* ==============================
+       INFORMATION
+    ============================== */
+
     .info-section {
         background: #f8f9fa;
         padding: 22px;
@@ -114,7 +134,9 @@
     }
 
 
-    /* CAMERA */
+    /* ==============================
+       CAMERA SECTION
+    ============================== */
 
     .camera-section {
         display: none;
@@ -138,15 +160,26 @@
         margin-top: 15px;
     }
 
+
+    /* Hidden canvas */
+
     #captureCanvas {
         display: none;
     }
+
+
+    /* Camera status */
 
     .camera-status {
         margin-top: 12px;
         color: #66717d;
         font-weight: 600;
     }
+
+
+    /* ==============================
+       RECOGNITION RESULT
+    ============================== */
 
     .recognition-result {
         max-width: 640px;
@@ -173,6 +206,11 @@
         color: #842029;
     }
 
+
+    /* ==============================
+       STOP BUTTON
+    ============================== */
+
     .stop-button {
         margin-top: 10px;
         padding: 12px 18px;
@@ -189,6 +227,10 @@
     }
 
 
+    /* ==============================
+       MOBILE
+    ============================== */
+
     @media (max-width: 800px) {
 
         .attendance-grid {
@@ -200,7 +242,9 @@
 </style>
 
 
-<!-- PAGE HEADER -->
+<!-- =====================================================
+     PAGE HEADER
+===================================================== -->
 
 <h1 class="page-title">
     Attendance Management
@@ -211,7 +255,9 @@
 </p>
 
 
-<!-- CAMERA SECTION -->
+<!-- =====================================================
+     CAMERA SECTION
+===================================================== -->
 
 <div
     class="camera-section"
@@ -227,6 +273,8 @@
     </p>
 
 
+    <!-- Browser camera -->
+
     <video
         id="camera"
         autoplay
@@ -234,12 +282,14 @@
     ></video>
 
 
-    <!-- Hidden canvas used to capture images -->
+    <!-- Hidden canvas used to capture frames -->
 
     <canvas
         id="captureCanvas"
     ></canvas>
 
+
+    <!-- Camera status -->
 
     <p
         class="camera-status"
@@ -249,6 +299,8 @@
     </p>
 
 
+    <!-- Recognition result -->
+
     <div
         id="recognitionResult"
         class="recognition-result"
@@ -256,6 +308,8 @@
         Waiting for face recognition...
     </div>
 
+
+    <!-- Stop camera -->
 
     <button
         type="button"
@@ -268,12 +322,16 @@
 </div>
 
 
-<!-- ATTENDANCE OPTIONS -->
+<!-- =====================================================
+     ATTENDANCE OPTIONS
+===================================================== -->
 
 <div class="attendance-grid">
 
 
-    <!-- AI FACE ATTENDANCE -->
+    <!-- =================================================
+         AI FACE ATTENDANCE
+    ================================================== -->
 
     <div class="attendance-card">
 
@@ -303,7 +361,9 @@
     </div>
 
 
-    <!-- MANUAL ATTENDANCE -->
+    <!-- =================================================
+         MANUAL ATTENDANCE
+    ================================================== -->
 
     <div class="attendance-card">
 
@@ -375,7 +435,9 @@
 </div>
 
 
-<!-- INFORMATION -->
+<!-- =====================================================
+     INFORMATION
+===================================================== -->
 
 <div class="info-section">
 
@@ -416,6 +478,11 @@
 
 <script>
 
+
+/* =====================================================
+   GLOBAL VARIABLES
+===================================================== */
+
 let cameraStream = null;
 
 let recognitionInterval = null;
@@ -425,27 +492,44 @@ let recognitionRunning = false;
 let recognitionBusy = false;
 
 
-/* =========================================
+/* =====================================================
    START CAMERA
-========================================= */
+===================================================== */
 
 async function startCamera() {
 
     const cameraSection =
-        document.getElementById("cameraSection");
+        document.getElementById(
+            "cameraSection"
+        );
 
     const camera =
-        document.getElementById("camera");
+        document.getElementById(
+            "camera"
+        );
 
     const status =
-        document.getElementById("cameraStatus");
+        document.getElementById(
+            "cameraStatus"
+        );
 
     const result =
-        document.getElementById("recognitionResult");
+        document.getElementById(
+            "recognitionResult"
+        );
 
 
-    cameraSection.style.display = "block";
+    /*
+        Show camera section
+    */
 
+    cameraSection.style.display =
+        "block";
+
+
+    /*
+        Reset status
+    */
 
     status.textContent =
         "Requesting camera permission...";
@@ -461,10 +545,15 @@ async function startCamera() {
 
     try {
 
+        /*
+            Request browser camera
+        */
+
         cameraStream =
             await navigator.mediaDevices.getUserMedia({
 
                 video: {
+
                     width: {
                         ideal: 640
                     },
@@ -474,6 +563,7 @@ async function startCamera() {
                     },
 
                     facingMode: "user"
+
                 },
 
                 audio: false
@@ -481,19 +571,33 @@ async function startCamera() {
             });
 
 
+        /*
+            Attach camera stream
+        */
+
         camera.srcObject =
             cameraStream;
 
+
+        /*
+            Update status
+        */
 
         status.textContent =
             "Camera is active. Look at the camera.";
 
 
-        recognitionRunning = true;
+        /*
+            Start recognition
+        */
+
+        recognitionRunning =
+            true;
 
 
         /*
-         Start recognition every 1.5 seconds.
+            Clear old interval
+            if one exists
         */
 
         if (recognitionInterval) {
@@ -505,6 +609,10 @@ async function startCamera() {
         }
 
 
+        /*
+            Send one image every 1.5 seconds
+        */
+
         recognitionInterval =
             setInterval(
                 recognizeFace,
@@ -513,8 +621,8 @@ async function startCamera() {
 
 
         /*
-         Try the first recognition after
-         the camera has started.
+            First recognition
+            after camera starts
         */
 
         setTimeout(
@@ -547,39 +655,55 @@ async function startCamera() {
 }
 
 
-/* =========================================
+/* =====================================================
    RECOGNIZE FACE
-========================================= */
+===================================================== */
 
 async function recognizeFace() {
 
+    /*
+        Stop if recognition
+        is not running
+    */
+
     if (!recognitionRunning) {
+
         return;
+
     }
 
 
     /*
-     Prevent multiple requests from
-     running at the same time.
+        Do not send another request
+        while previous request is running
     */
 
     if (recognitionBusy) {
+
         return;
+
     }
 
 
     const camera =
-        document.getElementById("camera");
+        document.getElementById(
+            "camera"
+        );
 
     const canvas =
-        document.getElementById("captureCanvas");
+        document.getElementById(
+            "captureCanvas"
+        );
 
     const result =
-        document.getElementById("recognitionResult");
+        document.getElementById(
+            "recognitionResult"
+        );
 
 
     /*
-     Make sure camera has loaded a frame.
+        Make sure camera
+        has a video frame
     */
 
     if (
@@ -592,13 +716,14 @@ async function recognizeFace() {
     }
 
 
-    recognitionBusy = true;
+    recognitionBusy =
+        true;
 
 
     try {
 
         /*
-         Set canvas size to camera size.
+            Set canvas size
         */
 
         canvas.width =
@@ -608,49 +733,74 @@ async function recognizeFace() {
             camera.videoHeight;
 
 
+        /*
+            Get canvas context
+        */
+
         const context =
-            canvas.getContext("2d");
-
-
-        /*
-         Copy current camera frame
-         into canvas.
-        */
-
-        context.drawImage(
-            camera,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
-
-
-        /*
-         Convert frame to JPEG.
-        */
-
-        const imageData =
-            canvas.toDataURL(
-                "image/jpeg",
-                0.8
+            canvas.getContext(
+                "2d"
             );
 
 
         /*
-         Send image to Flask.
+            Copy camera frame
+            into canvas
+        */
+
+        context.drawImage(
+
+            camera,
+
+            0,
+
+            0,
+
+            canvas.width,
+
+            canvas.height
+
+        );
+
+
+        /*
+            Convert frame
+            to JPEG Base64
+        */
+
+        const imageData =
+            canvas.toDataURL(
+
+                "image/jpeg",
+
+                0.8
+
+            );
+
+
+        /*
+            Send image to Flask
+
+            IMPORTANT:
+            The endpoint name matches
+            app.py:
+            recognize_face_api
         */
 
         const response =
             await fetch(
+
                 "{{ url_for('recognize_face_api') }}",
+
                 {
 
                     method: "POST",
 
                     headers: {
+
                         "Content-Type":
                             "application/json"
+
                     },
 
                     body: JSON.stringify({
@@ -660,35 +810,51 @@ async function recognizeFace() {
                     })
 
                 }
+
             );
 
 
         /*
-         Check HTTP response.
+            Read JSON response even
+            when HTTP status is 400/500.
+
+            This is important for Render.
         */
 
-        if (!response.ok) {
+        let data = null;
 
-            throw new Error(
-                "Server returned HTTP " +
-                response.status
-            );
+
+        try {
+
+            data =
+                await response.json();
+
+        } catch (jsonError) {
+
+            data = {
+
+                success: false,
+
+                message:
+                    "Server returned an invalid response."
+
+            };
 
         }
 
 
-        const data =
-            await response.json();
-
+        /*
+            Show response in browser console
+        */
 
         console.log(
-            "Face recognition:",
+            "Face recognition response:",
             data
         );
 
 
         /*
-         Successful recognition.
+            Successful recognition
         */
 
         if (data.success) {
@@ -698,13 +864,23 @@ async function recognizeFace() {
 
 
             result.textContent =
-                "✅ " + data.message;
+                "✅ " +
+                (
+                    data.message ||
+                    "Attendance marked successfully."
+                );
+
 
         }
 
 
         /*
-         Face detected but not recognized.
+            Server returned an error/warning.
+
+            Example on Render:
+
+            Face model not found.
+            Please train the model first.
         */
 
         else {
@@ -714,15 +890,23 @@ async function recognizeFace() {
 
 
             result.textContent =
-                "⚠️ " + data.message;
+                "⚠️ " +
+                (
+                    data.message ||
+                    "Face could not be recognized."
+                );
 
         }
 
 
     } catch (error) {
 
+        /*
+            Network or connection error
+        */
+
         console.error(
-            "Recognition error:",
+            "Recognition request error:",
             error
         );
 
@@ -732,21 +916,26 @@ async function recognizeFace() {
 
 
         result.textContent =
-            "❌ Face recognition request failed.";
+            "❌ Could not connect to the face recognition server.";
 
     }
 
 
-    recognitionBusy = false;
+    recognitionBusy =
+        false;
 
 }
 
 
-/* =========================================
+/* =====================================================
    STOP CAMERA
-========================================= */
+===================================================== */
 
 function stopCamera() {
+
+    /*
+        Stop recognition
+    */
 
     recognitionRunning =
         false;
@@ -755,6 +944,10 @@ function stopCamera() {
     recognitionBusy =
         false;
 
+
+    /*
+        Clear recognition timer
+    */
 
     if (recognitionInterval) {
 
@@ -768,6 +961,10 @@ function stopCamera() {
     }
 
 
+    /*
+        Stop camera tracks
+    */
+
     if (cameraStream) {
 
         cameraStream
@@ -776,19 +973,30 @@ function stopCamera() {
                 track => track.stop()
             );
 
+
         cameraStream =
             null;
 
     }
 
 
+    /*
+        Clear video
+    */
+
     const camera =
-        document.getElementById("camera");
+        document.getElementById(
+            "camera"
+        );
 
 
     camera.srcObject =
         null;
 
+
+    /*
+        Update result
+    */
 
     const result =
         document.getElementById(
@@ -803,6 +1011,10 @@ function stopCamera() {
     result.textContent =
         "Camera stopped.";
 
+
+    /*
+        Hide camera section
+    */
 
     document.getElementById(
         "cameraSection"
