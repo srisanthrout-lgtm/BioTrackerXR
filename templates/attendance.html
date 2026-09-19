@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    .page-title {
+        margin-bottom: 5px;
+    }
+
+    .page-subtitle {
+        color: #777;
+        margin-bottom: 25px;
+    }
+
+    .attendance-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+
+    .attendance-card {
+        background: white;
+        padding: 28px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .attendance-icon {
+        font-size: 42px;
+        margin-bottom: 12px;
+    }
+
+    .attendance-card h2 {
+        margin-top: 0;
+        margin-bottom: 10px;
+    }
+
+    .muted {
+        color: #777;
+        line-height: 1.6;
+    }
+
+    .face-button {
+        display: inline-block;
+        margin-top: 15px;
+        padding: 12px 18px;
+        background: #667eea;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+    }
+
+    .face-button:hover {
+        background: #5568d8;
+    }
+
+    .form-group {
+        margin-top: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 8px;
+    }
+
+    select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 15px;
+        background: white;
+    }
+
+    select:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .manual-button {
+        margin-top: 15px;
+        padding: 12px 18px;
+        border: none;
+        background: #198754;
+        color: white;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .manual-button:hover {
+        background: #157347;
+    }
+
+    .info-section {
+        background: #f8f9fa;
+        padding: 22px;
+        border-radius: 10px;
+        margin-top: 20px;
+    }
+
+    .info-section h3 {
+        margin-top: 0;
+    }
+
+    .info-section ul {
+        line-height: 2;
+        color: #555;
+    }
+
+    @media (max-width: 800px) {
+
+        .attendance-grid {
+            grid-template-columns: 1fr;
+        }
+
+    }
+
+</style>
+
+
+<!-- PAGE HEADER -->
+
+<h1 class="page-title">
+    Attendance Management
+</h1>
+
+<p class="page-subtitle">
+    Record and manage student attendance using AI face recognition or manual entry.
+</p>
+
+
+<!-- ATTENDANCE OPTIONS -->
+
+<div class="attendance-grid">
+
+
+    <!-- AI FACE ATTENDANCE -->
+
+    <div class="attendance-card">
+
+        <div class="attendance-icon">
+            📷
+        </div>
+
+        <h2>
+            AI Face Attendance
+        </h2>
+
+        <p class="muted">
+            Use the webcam to detect and recognize a registered
+            student's face. Attendance is automatically recorded
+            in the database.
+        </p>
+
+        <a
+            class="face-button"
+            href="{{ url_for('face_attendance') }}"
+        >
+            📷 Start Face Attendance
+        </a>
+
+    </div>
+
+
+    <!-- MANUAL ATTENDANCE -->
+
+    <div class="attendance-card">
+
+        <div class="attendance-icon">
+            📝
+        </div>
+
+        <h2>
+            Manual Attendance
+        </h2>
+
+        <p class="muted">
+            Select a student from the list and manually mark
+            their attendance.
+        </p>
+
+
+        <form
+            method="post"
+            class="form"
+        >
+
+            <div class="form-group">
+
+                <label for="student_id">
+                    Select Student
+                </label>
+
+                <select
+                    name="student_id"
+                    id="student_id"
+                    required
+                >
+
+                    <option value="">
+                        -- Select Student --
+                    </option>
+
+                    {% for s in students %}
+
+                    <option value="{{ s.id }}">
+
+                        {{ s.register_no }}
+                        -
+                        {{ s.name }}
+
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="manual-button"
+            >
+                ✅ Mark Present
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- INFORMATION -->
+
+<div class="info-section">
+
+    <h3>
+        📌 Attendance Information
+    </h3>
+
+    <ul>
+
+        <li>
+            Face recognition automatically identifies
+            registered students.
+        </li>
+
+        <li>
+            The system prevents duplicate attendance
+            for the same student on the same day.
+        </li>
+
+        <li>
+            Manual attendance can be used when face
+            recognition is unavailable.
+        </li>
+
+        <li>
+            Attendance records are stored in the
+            SQLite database.
+        </li>
+
+    </ul>
+
+</div>
+
+
+{% endblock %}

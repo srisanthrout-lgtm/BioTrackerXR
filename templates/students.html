@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    .students-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    .students-header h1 {
+        margin: 0;
+    }
+
+    .student-count {
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .search-box {
+        width: 100%;
+        padding: 13px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+    }
+
+    .search-box:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .student-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    }
+
+    .student-table th {
+        background: #f1f4f8;
+        text-align: left;
+        padding: 15px;
+        font-size: 14px;
+    }
+
+    .student-table td {
+        padding: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .student-table tr:hover {
+        background: #f8f9ff;
+    }
+
+    .register {
+        font-weight: bold;
+        color: #4f46e5;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: #e8f0ff;
+        color: #3157b7;
+        font-size: 13px;
+    }
+
+    .button {
+        text-decoration: none;
+        padding: 11px 16px;
+        border-radius: 7px;
+        background: #667eea;
+        color: white;
+        font-weight: bold;
+    }
+
+    .edit-button {
+        text-decoration: none;
+        background: #667eea;
+        color: white;
+        padding: 7px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+    }
+
+    .face-button {
+        text-decoration: none;
+        background: #198754;
+        color: white;
+        padding: 7px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        margin-left: 5px;
+    }
+
+    .face-button:hover {
+        background: #157347;
+    }
+
+    .delete-button {
+        background: #dc3545;
+        color: white;
+        padding: 7px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+        margin-left: 5px;
+    }
+
+    .delete-button:hover {
+        background: #b02a37;
+    }
+
+    .no-result {
+        text-align: center;
+        padding: 25px;
+        color: #777;
+    }
+
+    .actions {
+        white-space: nowrap;
+    }
+
+</style>
+
+
+<div class="students-header">
+
+    <div>
+
+        <h1>Student Management</h1>
+
+        <div class="student-count">
+            Total Registered Students:
+            <strong>{{ students|length }}</strong>
+        </div>
+
+    </div>
+
+    <a
+        class="button"
+        href="{{ url_for('add_student') }}"
+    >
+        + Add Student
+    </a>
+
+</div>
+
+
+<input
+    type="text"
+    id="studentSearch"
+    class="search-box"
+    placeholder="🔍 Search by name, register number, department or year..."
+    onkeyup="searchStudents()"
+>
+
+
+<table
+    class="student-table"
+    id="studentsTable"
+>
+
+    <thead>
+
+        <tr>
+
+            <th>#</th>
+            <th>Register No</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Year</th>
+            <th>Action</th>
+
+        </tr>
+
+    </thead>
+
+
+    <tbody>
+
+        {% for s in students %}
+
+        <tr>
+
+            <td>
+                {{ loop.index }}
+            </td>
+
+            <td class="register">
+                {{ s.register_no }}
+            </td>
+
+            <td>
+                {{ s.name }}
+            </td>
+
+            <td>
+
+                <span class="badge">
+                    {{ s.department }}
+                </span>
+
+            </td>
+
+            <td>
+                {{ s.year }}
+            </td>
+
+            <td class="actions">
+
+                <!-- EDIT -->
+
+                <a
+                    href="{{ url_for('edit_student', student_id=s.id) }}"
+                    class="edit-button"
+                >
+                    ✏️ Edit
+                </a>
+
+
+                <!-- REGISTER FACE -->
+
+                <a
+                    href="{{ url_for('register_face', student_id=s.id) }}"
+                    class="face-button"
+                >
+                    📷 Register Face
+                </a>
+
+
+                <!-- DELETE -->
+
+                <form
+                    method="POST"
+                    action="{{ url_for('delete_student', student_id=s.id) }}"
+                    style="display:inline;"
+                    onsubmit="return confirmDelete('{{ s.name }}');"
+                >
+
+                    <button
+                        type="submit"
+                        class="delete-button"
+                    >
+                        🗑️ Delete
+                    </button>
+
+                </form>
+
+            </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+
+            <td
+                colspan="6"
+                class="no-result"
+            >
+                No students registered.
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+
+<script>
+
+function searchStudents() {
+
+    let input =
+        document
+        .getElementById("studentSearch")
+        .value
+        .toLowerCase();
+
+    let rows =
+        document
+        .getElementById("studentsTable")
+        .getElementsByTagName("tbody")[0]
+        .getElementsByTagName("tr");
+
+
+    for (let i = 0; i < rows.length; i++) {
+
+        let text =
+            rows[i]
+            .innerText
+            .toLowerCase();
+
+        if (text.includes(input)) {
+
+            rows[i].style.display = "";
+
+        } else {
+
+            rows[i].style.display = "none";
+
+        }
+
+    }
+
+}
+
+
+function confirmDelete(name) {
+
+    return confirm(
+        "Are you sure you want to delete " +
+        name +
+        "?\n\n" +
+        "This will also delete this student's attendance records."
+    );
+
+}
+
+</script>
+
+
+{% endblock %}

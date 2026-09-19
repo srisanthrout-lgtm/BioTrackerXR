@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+
+    .history-header {
+        margin-bottom: 25px;
+    }
+
+    .history-header h1 {
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        color: #777;
+    }
+
+    .history-actions {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .export-button {
+        display: inline-block;
+        padding: 12px 18px;
+        background: #198754;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.2s;
+    }
+
+    .export-button:hover {
+        background: #157347;
+    }
+
+    .search-box {
+        width: 100%;
+        padding: 13px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 15px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+    }
+
+    .search-box:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+
+    .history-table th {
+        background: #f1f4f8;
+        padding: 14px;
+        text-align: left;
+        font-size: 14px;
+    }
+
+    .history-table td {
+        padding: 14px;
+        border-top: 1px solid #eee;
+    }
+
+    .history-table tr:hover {
+        background: #f8f9ff;
+    }
+
+    .register {
+        font-weight: bold;
+        color: #4f46e5;
+    }
+
+    .status {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 20px;
+        background: #d1e7dd;
+        color: #0f5132;
+        font-weight: bold;
+        font-size: 13px;
+    }
+
+    .no-result {
+        text-align: center;
+        padding: 25px;
+        color: #777;
+    }
+
+</style>
+
+
+<div class="history-header">
+
+    <h1>📋 Attendance History</h1>
+
+    <p class="subtitle">
+        Complete record of student attendance.
+    </p>
+
+</div>
+
+
+<!-- ACTION BUTTONS -->
+
+<div class="history-actions">
+
+    <a
+        href="{{ url_for('export_attendance') }}"
+        class="export-button"
+    >
+        📥 Export to Excel
+    </a>
+
+</div>
+
+
+<!-- SEARCH -->
+
+<input
+    type="text"
+    id="historySearch"
+    class="search-box"
+    placeholder="🔍 Search by name, register number, department or date..."
+    onkeyup="searchHistory()"
+>
+
+
+<!-- ATTENDANCE TABLE -->
+
+<table
+    class="history-table"
+    id="historyTable"
+>
+
+    <thead>
+
+        <tr>
+
+            <th>#</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Register No</th>
+            <th>Name</th>
+            <th>Department</th>
+            <th>Year</th>
+            <th>Status</th>
+
+        </tr>
+
+    </thead>
+
+
+    <tbody>
+
+        {% for r in rows %}
+
+        <tr>
+
+            <td>
+                {{ loop.index }}
+            </td>
+
+            <td>
+                {{ r.date }}
+            </td>
+
+            <td>
+                {{ r.time }}
+            </td>
+
+            <td class="register">
+                {{ r.register_no }}
+            </td>
+
+            <td>
+                {{ r.name }}
+            </td>
+
+            <td>
+                {{ r.department }}
+            </td>
+
+            <td>
+                {{ r.year }}
+            </td>
+
+            <td>
+
+                <span class="status">
+                    {{ r.status }}
+                </span>
+
+            </td>
+
+        </tr>
+
+        {% else %}
+
+        <tr>
+
+            <td
+                colspan="8"
+                class="no-result"
+            >
+                No attendance records found.
+            </td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+
+</table>
+
+
+<script>
+
+function searchHistory() {
+
+    let input =
+        document
+        .getElementById("historySearch")
+        .value
+        .toLowerCase();
+
+    let rows =
+        document
+        .getElementById("historyTable")
+        .getElementsByTagName("tbody")[0]
+        .getElementsByTagName("tr");
+
+
+    for (let i = 0; i < rows.length; i++) {
+
+        let text =
+            rows[i]
+            .innerText
+            .toLowerCase();
+
+        if (text.includes(input)) {
+
+            rows[i].style.display = "";
+
+        } else {
+
+            rows[i].style.display = "none";
+
+        }
+
+    }
+
+}
+
+</script>
+
+
+{% endblock %}
