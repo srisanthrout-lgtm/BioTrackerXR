@@ -2,3 +2,4 @@ Flask>=3.0,<4.0
 gunicorn
 opencv-contrib-python==4.13.0.92
 numpy
+openpyxl
