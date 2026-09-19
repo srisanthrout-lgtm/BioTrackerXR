@@ -28,16 +28,95 @@ from werkzeug.security import (
 from openpyxl import Workbook
 
 
-# ---------------- APPLICATION ----------------
+# =========================================================
+# APPLICATION
+# =========================================================
 
 app = Flask(__name__)
 
-app.secret_key = "biotrackerxr-dev-key"
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "biotrackerxr-dev-key"
+)
 
-DB = "biotrackerxr.db"
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+DB = os.path.join(
+    BASE_DIR,
+    "biotrackerxr.db"
+)
+
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "trainer.yml"
+)
 
 
-# ---------------- DATABASE ----------------
+# =========================================================
+# CREATE TRAINER MODEL FROM RENDER ENVIRONMENT VARIABLE
+# =========================================================
+
+def ensure_trainer_model():
+
+    encoded_model = os.environ.get(
+        "TRAINER_YML_BASE64",
+        ""
+    ).strip()
+
+    # If environment variable exists,
+    # recreate trainer.yml
+    if encoded_model:
+
+        try:
+
+            model_bytes = base64.b64decode(
+                encoded_model
+            )
+
+            with open(
+                MODEL_PATH,
+                "wb"
+            ) as model_file:
+
+                model_file.write(
+                    model_bytes
+                )
+
+            print(
+                "trainer.yml created from "
+                "TRAINER_YML_BASE64."
+            )
+
+        except Exception as e:
+
+            print(
+                "Could not create trainer.yml "
+                "from environment variable:",
+                e
+            )
+
+    elif os.path.exists(MODEL_PATH):
+
+        print(
+            "Using existing local trainer.yml."
+        )
+
+    else:
+
+        print(
+            "WARNING: trainer.yml not found."
+        )
+
+
+# Create the model before the application starts
+ensure_trainer_model()
+
+
+# =========================================================
+# DATABASE
+# =========================================================
 
 def get_db():
 
@@ -97,7 +176,10 @@ def init_db():
             INSERT INTO admins(username,password)
             VALUES(?,?)
             """,
-            ("admin", password_hash)
+            (
+                "admin",
+                password_hash
+            )
         )
 
     c.commit()
@@ -105,12 +187,17 @@ def init_db():
     c.close()
 
 
-# ---------------- LOGIN PROTECTION ----------------
+# =========================================================
+# LOGIN PROTECTION
+# =========================================================
 
 def login_required(f):
 
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(
+        *args,
+        **kwargs
+    ):
 
         if "admin_id" not in session:
 
@@ -118,12 +205,17 @@ def login_required(f):
                 url_for("login")
             )
 
-        return f(*args, **kwargs)
+        return f(
+            *args,
+            **kwargs
+        )
 
     return decorated_function
 
 
-# ---------------- LOGIN ----------------
+# =========================================================
+# LOGIN
+# =========================================================
 
 @app.route(
     "/login",
@@ -165,9 +257,13 @@ def login():
             password
         ):
 
-            session["admin_id"] = admin["id"]
+            session["admin_id"] = (
+                admin["id"]
+            )
 
-            session["username"] = admin["username"]
+            session["username"] = (
+                admin["username"]
+            )
 
             flash(
                 "Login successful."
@@ -186,7 +282,9 @@ def login():
     )
 
 
-# ---------------- LOGOUT ----------------
+# =========================================================
+# LOGOUT
+# =========================================================
 
 @app.route("/logout")
 def logout():
@@ -202,7 +300,9 @@ def logout():
     )
 
 
-# ---------------- DASHBOARD ----------------
+# =========================================================
+# DASHBOARD
+# =========================================================
 
 @app.route("/")
 @login_required
@@ -260,7 +360,9 @@ def dashboard():
     )
 
 
-# ---------------- STUDENTS ----------------
+# =========================================================
+# STUDENTS
+# =========================================================
 
 @app.route("/students")
 @login_required
@@ -284,7 +386,9 @@ def students():
     )
 
 
-# ---------------- ADD STUDENT ----------------
+# =========================================================
+# ADD STUDENT
+# =========================================================
 
 @app.route(
     "/students/add",
@@ -295,7 +399,8 @@ def add_student():
 
     if request.method == "POST":
 
-        v = [
+        values = [
+
             request.form[
                 "register_no"
             ].strip(),
@@ -311,6 +416,7 @@ def add_student():
             request.form[
                 "year"
             ].strip()
+
         ]
 
         c = get_db()
@@ -320,10 +426,15 @@ def add_student():
             c.execute(
                 """
                 INSERT INTO students
-                (register_no,name,department,year)
+                (
+                    register_no,
+                    name,
+                    department,
+                    year
+                )
                 VALUES(?,?,?,?)
                 """,
-                v
+                values
             )
 
             c.commit()
@@ -349,7 +460,9 @@ def add_student():
     )
 
 
-# ---------------- EDIT STUDENT ----------------
+# =========================================================
+# EDIT STUDENT
+# =========================================================
 
 @app.route(
     "/students/edit/<int:student_id>",
@@ -445,7 +558,9 @@ def edit_student(student_id):
     )
 
 
-# ---------------- DELETE STUDENT ----------------
+# =========================================================
+# DELETE STUDENT
+# =========================================================
 
 @app.route(
     "/students/delete/<int:student_id>",
@@ -507,7 +622,9 @@ def delete_student(student_id):
     )
 
 
-# ---------------- REGISTER FACE ----------------
+# =========================================================
+# REGISTER FACE
+# =========================================================
 
 @app.route(
     "/students/register-face/<int:student_id>"
@@ -539,13 +656,13 @@ def register_face(student_id):
         )
 
     script_path = os.path.join(
-        os.path.dirname(
-            os.path.abspath(__file__)
-        ),
+        BASE_DIR,
         "register_face.py"
     )
 
-    if not os.path.exists(script_path):
+    if not os.path.exists(
+        script_path
+    ):
 
         flash(
             "register_face.py was not found."
@@ -582,7 +699,9 @@ def register_face(student_id):
     )
 
 
-# ---------------- MANUAL ATTENDANCE ----------------
+# =========================================================
+# MANUAL ATTENDANCE
+# =========================================================
 
 @app.route(
     "/attendance",
@@ -607,11 +726,11 @@ def attendance():
             "student_id"
         ]
 
-        d = datetime.now().strftime(
+        date = datetime.now().strftime(
             "%Y-%m-%d"
         )
 
-        t = datetime.now().strftime(
+        time = datetime.now().strftime(
             "%H:%M:%S"
         )
 
@@ -620,13 +739,23 @@ def attendance():
             c.execute(
                 """
                 INSERT INTO attendance
-                (student_id,date,time,status)
-                VALUES(?,?,?,'Present')
+                (
+                    student_id,
+                    date,
+                    time,
+                    status
+                )
+                VALUES(
+                    ?,
+                    ?,
+                    ?,
+                    'Present'
+                )
                 """,
                 (
                     sid,
-                    d,
-                    t
+                    date,
+                    time
                 )
             )
 
@@ -668,10 +797,12 @@ def attendance():
 @login_required
 def recognize_face_api():
 
-    # Check model
+    # -----------------------------------------------------
+    # Check trained model
+    # -----------------------------------------------------
 
     if not os.path.exists(
-        "trainer.yml"
+        MODEL_PATH
     ):
 
         return {
@@ -704,7 +835,7 @@ def recognize_face_api():
                 1
             )[1]
 
-        # Decode image
+        # Decode Base64 image
 
         image_bytes = base64.b64decode(
             image_data
@@ -727,31 +858,39 @@ def recognize_face_api():
                 "message": "Invalid image."
             }, 400
 
+        # -------------------------------------------------
         # Convert to grayscale
+        # -------------------------------------------------
 
         gray = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2GRAY
         )
 
+        # -------------------------------------------------
         # Face detector
+        # -------------------------------------------------
 
         face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades +
             "haarcascade_frontalface_default.xml"
         )
 
-        # Face recognizer
+        # -------------------------------------------------
+        # LBPH face recognizer
+        # -------------------------------------------------
 
         recognizer = (
             cv2.face.LBPHFaceRecognizer_create()
         )
 
         recognizer.read(
-            "trainer.yml"
+            MODEL_PATH
         )
 
+        # -------------------------------------------------
         # Detect faces
+        # -------------------------------------------------
 
         faces = face_cascade.detectMultiScale(
             gray,
@@ -769,13 +908,15 @@ def recognize_face_api():
 
         c = get_db()
 
-        # Check every detected face
+        # -------------------------------------------------
+        # Check detected faces
+        # -------------------------------------------------
 
         for x, y, w, h in faces:
 
             face = gray[
-                y:y+h,
-                x:x+w
+                y:y + h,
+                x:x + w
             ]
 
             label, confidence = (
@@ -794,7 +935,9 @@ def recognize_face_api():
                 (label,)
             ).fetchone()
 
-            # Recognized
+            # -------------------------------------------------
+            # Recognized student
+            # -------------------------------------------------
 
             if student and confidence < 70:
 
@@ -802,7 +945,9 @@ def recognize_face_api():
 
                 name = student["name"]
 
-                register_no = student["register_no"]
+                register_no = student[
+                    "register_no"
+                ]
 
                 today = datetime.now().strftime(
                     "%Y-%m-%d"
@@ -823,7 +968,7 @@ def recognize_face_api():
                             time,
                             status
                         )
-                        VALUES (
+                        VALUES(
                             ?,
                             ?,
                             ?,
@@ -884,7 +1029,7 @@ def recognize_face_api():
 
 
 # =========================================================
-# EXISTING LOCAL OPENCV FACE ATTENDANCE
+# LOCAL OPENCV FACE ATTENDANCE
 # =========================================================
 
 @app.route("/face-attendance")
@@ -892,7 +1037,7 @@ def recognize_face_api():
 def face_attendance():
 
     if not os.path.exists(
-        "trainer.yml"
+        MODEL_PATH
     ):
 
         flash(
@@ -911,7 +1056,7 @@ def face_attendance():
     )
 
     recognizer.read(
-        "trainer.yml"
+        MODEL_PATH
     )
 
     face_cascade = cv2.CascadeClassifier(
@@ -968,8 +1113,8 @@ def face_attendance():
         for x, y, w, h in faces:
 
             face = gray[
-                y:y+h,
-                x:x+w
+                y:y + h,
+                x:x + w
             ]
 
             label, confidence = (
@@ -992,14 +1137,16 @@ def face_attendance():
 
                 student_id = student["id"]
 
-                register_no = student["register_no"]
+                register_no = student[
+                    "register_no"
+                ]
 
                 name = student["name"]
 
                 cv2.rectangle(
                     frame,
                     (x, y),
-                    (x+w, y+h),
+                    (x + w, y + h),
                     (0, 255, 0),
                     2
                 )
@@ -1007,7 +1154,7 @@ def face_attendance():
                 cv2.putText(
                     frame,
                     name,
-                    (x, y-35),
+                    (x, y - 35),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
                     (0, 255, 0),
@@ -1017,7 +1164,7 @@ def face_attendance():
                 cv2.putText(
                     frame,
                     register_no,
-                    (x, y-10),
+                    (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.55,
                     (0, 255, 0),
@@ -1026,11 +1173,11 @@ def face_attendance():
 
                 if student_id not in marked_students:
 
-                    d = datetime.now().strftime(
+                    date = datetime.now().strftime(
                         "%Y-%m-%d"
                     )
 
-                    t = datetime.now().strftime(
+                    time = datetime.now().strftime(
                         "%H:%M:%S"
                     )
 
@@ -1045,7 +1192,7 @@ def face_attendance():
                                 time,
                                 status
                             )
-                            VALUES (
+                            VALUES(
                                 ?,
                                 ?,
                                 ?,
@@ -1054,8 +1201,8 @@ def face_attendance():
                             """,
                             (
                                 student_id,
-                                d,
-                                t
+                                date,
+                                time
                             )
                         )
 
@@ -1082,7 +1229,7 @@ def face_attendance():
                 cv2.rectangle(
                     frame,
                     (x, y),
-                    (x+w, y+h),
+                    (x + w, y + h),
                     (0, 0, 255),
                     2
                 )
@@ -1090,7 +1237,7 @@ def face_attendance():
                 cv2.putText(
                     frame,
                     "Unknown Face",
-                    (x, y-10),
+                    (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.7,
                     (0, 0, 255),
@@ -1124,7 +1271,9 @@ def face_attendance():
     )
 
 
-# ---------------- ATTENDANCE HISTORY ----------------
+# =========================================================
+# ATTENDANCE HISTORY
+# =========================================================
 
 @app.route("/attendance-history")
 @login_required
@@ -1156,7 +1305,9 @@ def attendance_history():
     )
 
 
-# ---------------- EXCEL EXPORT ----------------
+# =========================================================
+# EXCEL EXPORT
+# =========================================================
 
 @app.route("/export-attendance")
 @login_required
@@ -1252,7 +1403,9 @@ def export_attendance():
     )
 
 
-# ---------------- REPORTS ----------------
+# =========================================================
+# REPORTS
+# =========================================================
 
 @app.route("/reports")
 @login_required
@@ -1280,7 +1433,7 @@ def reports():
         FROM students s
 
         LEFT JOIN attendance a
-            ON s.id=a.student_id
+            ON s.id = a.student_id
 
         GROUP BY s.id
 
@@ -1292,19 +1445,25 @@ def reports():
 
     data = []
 
-    for r in rows:
+    for row in rows:
 
-        n = r["recorded_days"] or 0
+        recorded_days = (
+            row["recorded_days"] or 0
+        )
 
-        p = r["present_days"] or 0
+        present_days = (
+            row["present_days"] or 0
+        )
 
         data.append(
             dict(
-                r,
+                row,
                 percentage=round(
-                    p / n * 100,
+                    present_days /
+                    recorded_days *
+                    100,
                     2
-                ) if n else 0
+                ) if recorded_days else 0
             )
         )
 
@@ -1314,13 +1473,16 @@ def reports():
     )
 
 
-# ---------------- DATABASE INITIALIZATION ----------------
+# =========================================================
+# DATABASE INITIALIZATION
+# =========================================================
 
-# Required when running with Gunicorn/Render.
 init_db()
 
 
-# ---------------- START APPLICATION ----------------
+# =========================================================
+# START APPLICATION
+# =========================================================
 
 if __name__ == "__main__":
 
