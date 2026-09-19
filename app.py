@@ -11,6 +11,8 @@ from flask import (
 
 import sqlite3
 import cv2
+import numpy as np
+import base64
 from datetime import datetime
 import os
 import sys
@@ -26,7 +28,10 @@ from werkzeug.security import (
 from openpyxl import Workbook
 
 
+# ---------------- APPLICATION ----------------
+
 app = Flask(__name__)
+
 app.secret_key = "biotrackerxr-dev-key"
 
 DB = "biotrackerxr.db"
@@ -120,7 +125,10 @@ def login_required(f):
 
 # ---------------- LOGIN ----------------
 
-@app.route("/login", methods=["GET", "POST"])
+@app.route(
+    "/login",
+    methods=["GET", "POST"]
+)
 def login():
 
     if "admin_id" in session:
@@ -549,9 +557,6 @@ def register_face(student_id):
 
     try:
 
-        # Send register number to
-        # register_face.py
-
         subprocess.Popen(
             [
                 sys.executable,
@@ -577,7 +582,7 @@ def register_face(student_id):
     )
 
 
-# ---------------- ATTENDANCE ----------------
+# ---------------- MANUAL ATTENDANCE ----------------
 
 @app.route(
     "/attendance",
@@ -652,13 +657,239 @@ def attendance():
     )
 
 
-# ---------------- FACE ATTENDANCE ----------------
+# =========================================================
+# BROWSER FACE RECOGNITION API
+# =========================================================
+
+@app.route(
+    "/recognize-face",
+    methods=["POST"]
+)
+@login_required
+def recognize_face_api():
+
+    # Check model
+
+    if not os.path.exists(
+        "trainer.yml"
+    ):
+
+        return {
+            "success": False,
+            "message": (
+                "Face model not found. "
+                "Please train the model first."
+            )
+        }, 400
+
+    try:
+
+        data = request.get_json()
+
+        if not data or "image" not in data:
+
+            return {
+                "success": False,
+                "message": "No image received."
+            }, 400
+
+        image_data = data["image"]
+
+        # Remove data URL prefix
+
+        if "," in image_data:
+
+            image_data = image_data.split(
+                ",",
+                1
+            )[1]
+
+        # Decode image
+
+        image_bytes = base64.b64decode(
+            image_data
+        )
+
+        image_array = np.frombuffer(
+            image_bytes,
+            dtype=np.uint8
+        )
+
+        frame = cv2.imdecode(
+            image_array,
+            cv2.IMREAD_COLOR
+        )
+
+        if frame is None:
+
+            return {
+                "success": False,
+                "message": "Invalid image."
+            }, 400
+
+        # Convert to grayscale
+
+        gray = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        # Face detector
+
+        face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades +
+            "haarcascade_frontalface_default.xml"
+        )
+
+        # Face recognizer
+
+        recognizer = (
+            cv2.face.LBPHFaceRecognizer_create()
+        )
+
+        recognizer.read(
+            "trainer.yml"
+        )
+
+        # Detect faces
+
+        faces = face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(80, 80)
+        )
+
+        if len(faces) == 0:
+
+            return {
+                "success": False,
+                "message": "No face detected."
+            }
+
+        c = get_db()
+
+        # Check every detected face
+
+        for x, y, w, h in faces:
+
+            face = gray[
+                y:y+h,
+                x:x+w
+            ]
+
+            label, confidence = (
+                recognizer.predict(face)
+            )
+
+            student = c.execute(
+                """
+                SELECT
+                    id,
+                    register_no,
+                    name
+                FROM students
+                WHERE id=?
+                """,
+                (label,)
+            ).fetchone()
+
+            # Recognized
+
+            if student and confidence < 70:
+
+                student_id = student["id"]
+
+                name = student["name"]
+
+                register_no = student["register_no"]
+
+                today = datetime.now().strftime(
+                    "%Y-%m-%d"
+                )
+
+                current_time = datetime.now().strftime(
+                    "%H:%M:%S"
+                )
+
+                try:
+
+                    c.execute(
+                        """
+                        INSERT INTO attendance
+                        (
+                            student_id,
+                            date,
+                            time,
+                            status
+                        )
+                        VALUES (
+                            ?,
+                            ?,
+                            ?,
+                            'Present'
+                        )
+                        """,
+                        (
+                            student_id,
+                            today,
+                            current_time
+                        )
+                    )
+
+                    c.commit()
+
+                    c.close()
+
+                    return {
+                        "success": True,
+                        "message": (
+                            f"Attendance marked "
+                            f"for {name}."
+                        ),
+                        "name": name,
+                        "register_no": register_no
+                    }
+
+                except sqlite3.IntegrityError:
+
+                    c.close()
+
+                    return {
+                        "success": True,
+                        "message": (
+                            f"{name} is already "
+                            "marked present today."
+                        ),
+                        "name": name,
+                        "register_no": register_no
+                    }
+
+        c.close()
+
+        return {
+            "success": False,
+            "message": "Unknown face."
+        }
+
+    except Exception as e:
+
+        return {
+            "success": False,
+            "message": (
+                "Recognition error: "
+                + str(e)
+            )
+        }, 500
+
+
+# =========================================================
+# EXISTING LOCAL OPENCV FACE ATTENDANCE
+# =========================================================
 
 @app.route("/face-attendance")
 @login_required
 def face_attendance():
-
-    # Check trained model
 
     if not os.path.exists(
         "trainer.yml"
@@ -673,13 +904,7 @@ def face_attendance():
             url_for("attendance")
         )
 
-
-    # ---------------- DATABASE ----------------
-
     c = get_db()
-
-
-    # ---------------- FACE RECOGNIZER ----------------
 
     recognizer = (
         cv2.face.LBPHFaceRecognizer_create()
@@ -689,22 +914,15 @@ def face_attendance():
         "trainer.yml"
     )
 
-
-    # ---------------- FACE DETECTOR ----------------
-
     face_cascade = cv2.CascadeClassifier(
         cv2.data.haarcascades +
         "haarcascade_frontalface_default.xml"
     )
 
-
-    # ---------------- CAMERA ----------------
-
     camera = cv2.VideoCapture(
         0,
         cv2.CAP_DSHOW
     )
-
 
     if not camera.isOpened():
 
@@ -718,40 +936,27 @@ def face_attendance():
             url_for("attendance")
         )
 
-
-    # Keep track of students
-    # already processed in this session
-
     marked_students = set()
-
 
     msg = (
         "Look at camera. "
         "Press Q or Esc to stop."
     )
 
-
-    # ---------------- CAMERA LOOP ----------------
-
     while True:
 
         success, frame = camera.read()
 
-
         if not success:
 
-            msg = (
-                "Could not read camera."
-            )
+            msg = "Could not read camera."
 
             break
-
 
         gray = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2GRAY
         )
-
 
         faces = face_cascade.detectMultiScale(
             gray,
@@ -760,9 +965,6 @@ def face_attendance():
             minSize=(80, 80)
         )
 
-
-        # ---------------- PROCESS EVERY FACE ----------------
-
         for x, y, w, h in faces:
 
             face = gray[
@@ -770,16 +972,9 @@ def face_attendance():
                 x:x+w
             ]
 
-
-            # Predict face
-
             label, confidence = (
                 recognizer.predict(face)
             )
-
-
-            # Find student using
-            # model label = student ID
 
             student = c.execute(
                 """
@@ -793,9 +988,6 @@ def face_attendance():
                 (label,)
             ).fetchone()
 
-
-            # ---------------- RECOGNIZED STUDENT ----------------
-
             if student and confidence < 70:
 
                 student_id = student["id"]
@@ -804,9 +996,6 @@ def face_attendance():
 
                 name = student["name"]
 
-
-                # Green rectangle
-
                 cv2.rectangle(
                     frame,
                     (x, y),
@@ -814,9 +1003,6 @@ def face_attendance():
                     (0, 255, 0),
                     2
                 )
-
-
-                # Student name
 
                 cv2.putText(
                     frame,
@@ -828,9 +1014,6 @@ def face_attendance():
                     2
                 )
 
-
-                # Register number
-
                 cv2.putText(
                     frame,
                     register_no,
@@ -841,9 +1024,6 @@ def face_attendance():
                     2
                 )
 
-
-                # ---------------- MARK ATTENDANCE ----------------
-
                 if student_id not in marked_students:
 
                     d = datetime.now().strftime(
@@ -853,7 +1033,6 @@ def face_attendance():
                     t = datetime.now().strftime(
                         "%H:%M:%S"
                     )
-
 
                     try:
 
@@ -880,15 +1059,12 @@ def face_attendance():
                             )
                         )
 
-
                         c.commit()
-
 
                         msg = (
                             f"Attendance marked "
                             f"for {name}."
                         )
-
 
                     except sqlite3.IntegrityError:
 
@@ -897,13 +1073,9 @@ def face_attendance():
                             "marked present today."
                         )
 
-
                     marked_students.add(
                         student_id
                     )
-
-
-            # ---------------- UNKNOWN FACE ----------------
 
             else:
 
@@ -915,7 +1087,6 @@ def face_attendance():
                     2
                 )
 
-
                 cv2.putText(
                     frame,
                     "Unknown Face",
@@ -926,17 +1097,12 @@ def face_attendance():
                     2
                 )
 
-
-        # ---------------- DISPLAY CAMERA ----------------
-
         cv2.imshow(
             "Bio Tracker XR - AI Face Attendance",
             frame
         )
 
-
         key = cv2.waitKey(1) & 0xFF
-
 
         if key in (
             ord("q"),
@@ -945,18 +1111,13 @@ def face_attendance():
 
             break
 
-
-    # ---------------- CLOSE CAMERA ----------------
-
     camera.release()
 
     cv2.destroyAllWindows()
 
     c.close()
 
-
     flash(msg)
-
 
     return redirect(
         url_for("dashboard")
@@ -1155,8 +1316,7 @@ def reports():
 
 # ---------------- DATABASE INITIALIZATION ----------------
 
-# Initialize the database when Flask starts.
-# This is required for deployment with Gunicorn/Render.
+# Required when running with Gunicorn/Render.
 init_db()
 
 
