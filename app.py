@@ -1153,11 +1153,16 @@ def reports():
     )
 
 
+# ---------------- DATABASE INITIALIZATION ----------------
+
+# Initialize the database when Flask starts.
+# This is required for deployment with Gunicorn/Render.
+init_db()
+
+
 # ---------------- START APPLICATION ----------------
 
 if __name__ == "__main__":
-
-    init_db()
 
     app.run(
         debug=True
