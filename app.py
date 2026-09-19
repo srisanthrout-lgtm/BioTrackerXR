@@ -13,6 +13,7 @@ import sqlite3
 import cv2
 import numpy as np
 import base64
+import gzip
 from datetime import datetime
 import os
 import sys
@@ -53,64 +54,84 @@ MODEL_PATH = os.path.join(
     "trainer.yml"
 )
 
+# Render Secret File location
+SECRET_MODEL_PATH = "/etc/secrets/trainer.yml.gz"
+
 
 # =========================================================
-# CREATE TRAINER MODEL FROM RENDER ENVIRONMENT VARIABLE
+# CREATE TRAINER MODEL
 # =========================================================
 
 def ensure_trainer_model():
 
-    encoded_model = os.environ.get(
-        "TRAINER_YML_BASE64",
-        ""
-    ).strip()
+    # -----------------------------------------------------
+    # 1. Render Secret File
+    # -----------------------------------------------------
 
-    # If environment variable exists,
-    # recreate trainer.yml
-    if encoded_model:
+    if os.path.exists(SECRET_MODEL_PATH):
 
         try:
 
-            model_bytes = base64.b64decode(
-                encoded_model
-            )
+            with gzip.open(
+                SECRET_MODEL_PATH,
+                "rb"
+            ) as compressed_file:
+
+                model_bytes = compressed_file.read()
 
             with open(
                 MODEL_PATH,
                 "wb"
             ) as model_file:
 
-                model_file.write(
-                    model_bytes
-                )
+                model_file.write(model_bytes)
 
             print(
-                "trainer.yml created from "
-                "TRAINER_YML_BASE64."
+                "trainer.yml created from Render Secret File."
             )
+
+            print(
+                "Model size:",
+                len(model_bytes),
+                "bytes"
+            )
+
+            return True
 
         except Exception as e:
 
             print(
-                "Could not create trainer.yml "
-                "from environment variable:",
+                "ERROR: Could not extract trainer.yml "
+                "from Render Secret File:",
                 e
             )
 
-    elif os.path.exists(MODEL_PATH):
+            return False
+
+    # -----------------------------------------------------
+    # 2. Local trainer.yml
+    # -----------------------------------------------------
+
+    if os.path.exists(MODEL_PATH):
 
         print(
             "Using existing local trainer.yml."
         )
 
-    else:
+        return True
 
-        print(
-            "WARNING: trainer.yml not found."
-        )
+    # -----------------------------------------------------
+    # 3. No model
+    # -----------------------------------------------------
+
+    print(
+        "WARNING: trainer.yml was not found."
+    )
+
+    return False
 
 
-# Create the model before the application starts
+# Create model before application starts
 ensure_trainer_model()
 
 
@@ -797,10 +818,6 @@ def attendance():
 @login_required
 def recognize_face_api():
 
-    # -----------------------------------------------------
-    # Check trained model
-    # -----------------------------------------------------
-
     if not os.path.exists(
         MODEL_PATH
     ):
@@ -826,16 +843,12 @@ def recognize_face_api():
 
         image_data = data["image"]
 
-        # Remove data URL prefix
-
         if "," in image_data:
 
             image_data = image_data.split(
                 ",",
                 1
             )[1]
-
-        # Decode Base64 image
 
         image_bytes = base64.b64decode(
             image_data
@@ -858,27 +871,22 @@ def recognize_face_api():
                 "message": "Invalid image."
             }, 400
 
-        # -------------------------------------------------
-        # Convert to grayscale
-        # -------------------------------------------------
-
         gray = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2GRAY
         )
-
-        # -------------------------------------------------
-        # Face detector
-        # -------------------------------------------------
 
         face_cascade = cv2.CascadeClassifier(
             cv2.data.haarcascades +
             "haarcascade_frontalface_default.xml"
         )
 
-        # -------------------------------------------------
-        # LBPH face recognizer
-        # -------------------------------------------------
+        if face_cascade.empty():
+
+            return {
+                "success": False,
+                "message": "Face detector could not be loaded."
+            }, 500
 
         recognizer = (
             cv2.face.LBPHFaceRecognizer_create()
@@ -887,10 +895,6 @@ def recognize_face_api():
         recognizer.read(
             MODEL_PATH
         )
-
-        # -------------------------------------------------
-        # Detect faces
-        # -------------------------------------------------
 
         faces = face_cascade.detectMultiScale(
             gray,
@@ -907,10 +911,6 @@ def recognize_face_api():
             }
 
         c = get_db()
-
-        # -------------------------------------------------
-        # Check detected faces
-        # -------------------------------------------------
 
         for x, y, w, h in faces:
 
@@ -934,10 +934,6 @@ def recognize_face_api():
                 """,
                 (label,)
             ).fetchone()
-
-            # -------------------------------------------------
-            # Recognized student
-            # -------------------------------------------------
 
             if student and confidence < 70:
 
