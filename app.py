@@ -54,12 +54,12 @@ MODEL_PATH = os.path.join(
     "trainer.yml"
 )
 
-# Render Secret File location
-SECRET_MODEL_PATH = "/etc/secrets/trainer.yml.gz"
+# Render Secret File
+SECRET_MODEL_PATH = "/etc/secrets/trainer.yml.gz.b64"
 
 
 # =========================================================
-# CREATE TRAINER MODEL
+# CREATE / LOAD TRAINER MODEL
 # =========================================================
 
 def ensure_trainer_model():
@@ -72,12 +72,21 @@ def ensure_trainer_model():
 
         try:
 
-            with gzip.open(
+            with open(
                 SECRET_MODEL_PATH,
-                "rb"
-            ) as compressed_file:
+                "r",
+                encoding="utf-8"
+            ) as secret_file:
 
-                model_bytes = compressed_file.read()
+                encoded_data = secret_file.read().strip()
+
+            compressed_data = base64.b64decode(
+                encoded_data
+            )
+
+            model_bytes = gzip.decompress(
+                compressed_data
+            )
 
             with open(
                 MODEL_PATH,
