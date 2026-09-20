@@ -3,723 +3,102 @@
 {% block content %}
 
 <style>
+    .page-title { margin-bottom: 5px; }
+    .page-subtitle { color: #777; margin-bottom: 25px; }
 
-    .page-title {
-        margin-bottom: 5px;
-    }
-
-    .page-subtitle {
-        color: #777;
-        margin-bottom: 25px;
-    }
-
-    .attendance-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 25px;
-        margin-bottom: 30px;
-    }
-
-    .attendance-card {
-        background: white;
-        padding: 28px;
-        border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-    }
-
-    .attendance-icon {
-        font-size: 42px;
-        margin-bottom: 12px;
-    }
-
-    .attendance-card h2 {
-        margin-top: 0;
-        margin-bottom: 10px;
-    }
-
-    .muted {
-        color: #777;
-        line-height: 1.6;
-    }
-
-    .face-button {
-        display: inline-block;
-        margin-top: 15px;
-        padding: 12px 18px;
-        background: #667eea;
-        color: white;
-        border: none;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .face-button:hover {
-        background: #5568d8;
-    }
-
-    .form-group {
-        margin-top: 20px;
-    }
-
-    .form-group label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 8px;
-    }
-
-    select {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        font-size: 15px;
-        background: white;
-    }
-
-    select:focus {
-        outline: none;
-        border-color: #667eea;
-    }
-
-    .manual-button {
-        margin-top: 15px;
-        padding: 12px 18px;
-        border: none;
-        background: #198754;
-        color: white;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
-    }
-
-    .manual-button:hover {
-        background: #157347;
-    }
-
-    .info-section {
-        background: #f8f9fa;
-        padding: 22px;
-        border-radius: 10px;
-        margin-top: 20px;
-    }
-
-    .info-section h3 {
-        margin-top: 0;
-    }
-
-    .info-section ul {
-        line-height: 2;
-        color: #555;
-    }
-
-
-    /* CAMERA SECTION */
-
-    .camera-section {
-        display: none;
+    .history-card {
         background: white;
         padding: 25px;
         border-radius: 12px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        margin-bottom: 30px;
-        text-align: center;
+        overflow-x: auto;
     }
 
-    .camera-section h2 {
-        margin-top: 0;
-    }
-
-    #camera {
+    .history-table {
         width: 100%;
-        max-width: 640px;
-        border-radius: 12px;
-        background: #111;
-        margin-top: 15px;
+        border-collapse: collapse;
+        min-width: 800px;
     }
 
-    .camera-controls {
-        margin-top: 15px;
+    .history-table th,
+    .history-table td {
+        padding: 13px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
     }
 
-    .stop-button {
-        padding: 12px 18px;
-        border: none;
-        background: #dc3545;
-        color: white;
-        border-radius: 8px;
-        font-weight: bold;
-        cursor: pointer;
+    .history-table th {
+        background: #f4f6fb;
+        font-weight: 700;
     }
 
-    .stop-button:hover {
-        background: #bb2d3b;
-    }
-
-    .camera-status {
-        margin-top: 12px;
-        color: #66717d;
-        font-weight: 600;
-    }
-
-    .recognition-result {
-        margin-top: 15px;
-        padding: 12px;
-        border-radius: 8px;
-        background: #f1f3f5;
-        color: #333;
-        font-weight: bold;
-    }
-
-    .success-result {
-        background: #d1e7dd;
+    .status-present {
         color: #0f5132;
+        background: #d1e7dd;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        display: inline-block;
     }
 
-    .error-result {
-        background: #f8d7da;
-        color: #842029;
+    .empty-message {
+        text-align: center;
+        padding: 35px;
+        color: #777;
     }
-
-    .warning-result {
-        background: #fff3cd;
-        color: #664d03;
-    }
-
-
-    @media (max-width: 800px) {
-
-        .attendance-grid {
-            grid-template-columns: 1fr;
-        }
-
-    }
-
 </style>
 
-
-<!-- PAGE HEADER -->
-
-<h1 class="page-title">
-    Attendance Management
-</h1>
+<h1 class="page-title">📋 Attendance History</h1>
 
 <p class="page-subtitle">
-    Record and manage student attendance using AI face recognition or manual entry.
+    View all recorded student attendance entries.
 </p>
 
+<div class="history-card">
 
-<!-- CAMERA SECTION -->
+    {% if rows %}
 
-<div
-    class="camera-section"
-    id="cameraSection"
->
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Register No</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Year</th>
+                <th>Status</th>
+            </tr>
+        </thead>
 
-    <h2>
-        📷 AI Face Attendance
-    </h2>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ row.date }}</td>
+                <td>{{ row.time }}</td>
+                <td>{{ row.register_no }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.department }}</td>
+                <td>{{ row.year }}</td>
+                <td>
+                    <span class="status-present">{{ row.status }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
-    <p class="muted">
-        Allow camera access and look at the camera.
-    </p>
+    {% else %}
 
-
-    <video
-        id="camera"
-        autoplay
-        playsinline
-    ></video>
-
-
-    <!-- Hidden canvas used to capture camera frames -->
-
-    <canvas
-        id="captureCanvas"
-        style="display:none;"
-    ></canvas>
-
-
-    <p
-        class="camera-status"
-        id="cameraStatus"
-    >
-        Starting camera...
-    </p>
-
-
-    <div
-        id="recognitionResult"
-        class="recognition-result"
-    >
-        Waiting for face recognition...
+    <div class="empty-message">
+        <h2>📭 No Attendance Records</h2>
+        <p>No attendance has been recorded yet.</p>
     </div>
 
-
-    <div class="camera-controls">
-
-        <button
-            type="button"
-            class="stop-button"
-            onclick="stopCamera()"
-        >
-            Stop Camera
-        </button>
-
-    </div>
+    {% endif %}
 
 </div>
-
-
-<!-- ATTENDANCE OPTIONS -->
-
-<div class="attendance-grid">
-
-
-    <!-- AI FACE ATTENDANCE -->
-
-    <div class="attendance-card">
-
-        <div class="attendance-icon">
-            📷
-        </div>
-
-        <h2>
-            AI Face Attendance
-        </h2>
-
-        <p class="muted">
-            Use your browser webcam to detect and recognize
-            a registered student's face. Attendance will be
-            recorded automatically.
-        </p>
-
-
-        <button
-            type="button"
-            class="face-button"
-            onclick="startCamera()"
-        >
-            📷 Start Face Attendance
-        </button>
-
-    </div>
-
-
-    <!-- MANUAL ATTENDANCE -->
-
-    <div class="attendance-card">
-
-        <div class="attendance-icon">
-            📝
-        </div>
-
-        <h2>
-            Manual Attendance
-        </h2>
-
-        <p class="muted">
-            Select a student from the list and manually mark
-            their attendance.
-        </p>
-
-
-        <form
-            method="post"
-            class="form"
-        >
-
-            <div class="form-group">
-
-                <label for="student_id">
-                    Select Student
-                </label>
-
-
-                <select
-                    name="student_id"
-                    id="student_id"
-                    required
-                >
-
-                    <option value="">
-                        -- Select Student --
-                    </option>
-
-
-                    {% for s in students %}
-
-                    <option value="{{ s.id }}">
-
-                        {{ s.register_no }}
-                        -
-                        {{ s.name }}
-
-                    </option>
-
-                    {% endfor %}
-
-                </select>
-
-            </div>
-
-
-            <button
-                type="submit"
-                class="manual-button"
-            >
-                ✅ Mark Present
-            </button>
-
-        </form>
-
-    </div>
-
-</div>
-
-
-<!-- INFORMATION -->
-
-<div class="info-section">
-
-    <h3>
-        📌 Attendance Information
-    </h3>
-
-    <ul>
-
-        <li>
-            Face recognition uses the browser camera.
-        </li>
-
-        <li>
-            The system automatically captures camera frames
-            for face recognition.
-        </li>
-
-        <li>
-            The system prevents duplicate attendance
-            for the same student on the same day.
-        </li>
-
-        <li>
-            Manual attendance can be used when face
-            recognition is unavailable.
-        </li>
-
-        <li>
-            Attendance records are stored in the
-            SQLite database.
-        </li>
-
-    </ul>
-
-</div>
-
-
-<script>
-
-let cameraStream = null;
-
-let recognitionInterval = null;
-
-let recognitionRunning = false;
-
-
-/* ---------------------------------
-   START CAMERA
---------------------------------- */
-
-async function startCamera() {
-
-    const cameraSection =
-        document.getElementById("cameraSection");
-
-    const camera =
-        document.getElementById("camera");
-
-    const status =
-        document.getElementById("cameraStatus");
-
-    const result =
-        document.getElementById("recognitionResult");
-
-
-    cameraSection.style.display = "block";
-
-
-    status.textContent =
-        "Requesting camera permission...";
-
-
-    result.className =
-        "recognition-result";
-
-    result.textContent =
-        "Starting face recognition...";
-
-
-    try {
-
-        cameraStream =
-            await navigator.mediaDevices.getUserMedia({
-
-                video: {
-                    width: {
-                        ideal: 640
-                    },
-
-                    height: {
-                        ideal: 480
-                    }
-                },
-
-                audio: false
-
-            });
-
-
-        camera.srcObject =
-            cameraStream;
-
-
-        status.textContent =
-            "Camera is active. Look at the camera.";
-
-
-        recognitionRunning = true;
-
-
-        /*
-         Start recognition every 1.5 seconds
-        */
-
-        if (recognitionInterval) {
-
-            clearInterval(
-                recognitionInterval
-            );
-
-        }
-
-
-        recognitionInterval =
-            setInterval(
-                recognizeFace,
-                1500
-            );
-
-
-    } catch (error) {
-
-        console.error(error);
-
-
-        status.textContent =
-            "Camera access was denied or unavailable.";
-
-
-        result.className =
-            "recognition-result error-result";
-
-
-        result.textContent =
-            "❌ Camera access failed.";
-
-    }
-
-}
-
-
-/* ---------------------------------
-   CAPTURE AND RECOGNIZE FACE
---------------------------------- */
-
-async function recognizeFace() {
-
-    if (!recognitionRunning) {
-        return;
-    }
-
-
-    const camera =
-        document.getElementById("camera");
-
-
-    const canvas =
-        document.getElementById("captureCanvas");
-
-
-    const result =
-        document.getElementById("recognitionResult");
-
-
-    if (
-        !camera.videoWidth ||
-        !camera.videoHeight
-    ) {
-
-        return;
-
-    }
-
-
-    canvas.width =
-        camera.videoWidth;
-
-
-    canvas.height =
-        camera.videoHeight;
-
-
-    const context =
-        canvas.getContext("2d");
-
-
-    context.drawImage(
-        camera,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-
-    /*
-        Convert camera frame to JPEG
-    */
-
-    const imageData =
-        canvas.toDataURL(
-            "image/jpeg",
-            0.8
-        );
-
-
-    try {
-
-        const response =
-            await fetch(
-                "{{ url_for('recognize_face_api') }}",
-                {
-
-                    method: "POST",
-
-                    headers: {
-                        "Content-Type":
-                            "application/json"
-                    },
-
-                    body: JSON.stringify({
-
-                        image: imageData
-
-                    })
-
-                }
-            );
-
-
-        const data =
-            await response.json();
-
-
-        if (data.success) {
-
-            result.className =
-                "recognition-result success-result";
-
-
-            result.textContent =
-                "✅ " + data.message;
-
-
-        } else {
-
-            result.className =
-                "recognition-result warning-result";
-
-
-            result.textContent =
-                "⚠️ " + data.message;
-
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            "Recognition error:",
-            error
-        );
-
-
-        result.className =
-            "recognition-result error-result";
-
-
-        result.textContent =
-            "❌ Could not connect to face recognition.";
-
-    }
-
-}
-
-
-/* ---------------------------------
-   STOP CAMERA
---------------------------------- */
-
-function stopCamera() {
-
-
-    recognitionRunning =
-        false;
-
-
-    if (recognitionInterval) {
-
-        clearInterval(
-            recognitionInterval
-        );
-
-        recognitionInterval =
-            null;
-
-    }
-
-
-    if (cameraStream) {
-
-        cameraStream
-            .getTracks()
-            .forEach(
-                track => track.stop()
-            );
-
-        cameraStream =
-            null;
-
-    }
-
-
-    const camera =
-        document.getElementById("camera");
-
-
-    camera.srcObject =
-        null;
-
-
-    document.getElementById(
-        "cameraSection"
-    ).style.display =
-        "none";
-
-}
-
-</script>
-
 
 {% endblock %}
