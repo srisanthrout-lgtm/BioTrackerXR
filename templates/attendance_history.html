@@ -601,7 +601,7 @@ async function recognizeFace() {
 
         const response =
             await fetch(
-                "{{ url_for('recognize_face') }}",
+                "{{ url_for('recognize_face_api') }}",
                 {
 
                     method: "POST",
