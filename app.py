@@ -10,6 +10,8 @@ from flask import (
 )
 
 import sqlite3
+import psycopg2
+from psycopg2.extras import DictCursor
 import cv2
 import numpy as np
 import base64
@@ -48,6 +50,9 @@ DB = os.path.join(
     BASE_DIR,
     "biotrackerxr.db"
 )
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL)
 
 MODEL_PATH = os.path.join(
     BASE_DIR,
@@ -148,12 +153,41 @@ ensure_trainer_model()
 # DATABASE
 # =========================================================
 
+class PostgresDB:
+
+    def __init__(self, url):
+        self.connection = psycopg2.connect(
+            url,
+            cursor_factory=DictCursor
+        )
+        self.cursor = self.connection.cursor()
+
+    def execute(self, query, params=None):
+        query = query.replace(
+            "INTEGER PRIMARY KEY AUTOINCREMENT",
+            "SERIAL PRIMARY KEY"
+        )
+        query = query.replace("?", "%s")
+        return self.cursor.execute(
+            query,
+            params or ()
+        ) or self.cursor
+
+    def commit(self):
+        self.connection.commit()
+
+    def close(self):
+        self.cursor.close()
+        self.connection.close()
+
+
 def get_db():
 
+    if USE_POSTGRES:
+        return PostgresDB(DATABASE_URL)
+
     c = sqlite3.connect(DB)
-
     c.row_factory = sqlite3.Row
-
     return c
 
 
@@ -473,7 +507,7 @@ def add_student():
                 "Student added successfully."
             )
 
-        except sqlite3.IntegrityError:
+        except (sqlite3.IntegrityError, psycopg2.IntegrityError):
 
             flash(
                 "Register number already exists."
