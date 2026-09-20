@@ -3,3 +3,4 @@ gunicorn
 opencv-contrib-python==4.13.0.92
 numpy
 openpyxl
+psycopg2-binary
